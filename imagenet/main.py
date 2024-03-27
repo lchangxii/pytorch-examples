@@ -63,6 +63,9 @@ parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
 parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training')
+parser.add_argument('--collect', default=-1, type=int,
+                    help='collect iteration number')
+
 parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='nccl', type=str,
@@ -261,8 +264,13 @@ def main_worker(gpu, ngpus_per_node, args):
         train_sampler = None
         val_sampler = None
 
+    trained_batchsize = args.batch_size
+    trained_batchsize = 1
+#    print (train_sampler is None)  
+#    shuffle = (train_sampler is None)
+    shuffle = False
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
+        train_dataset, batch_size=trained_batchsize, shuffle=shuffle,
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
@@ -273,6 +281,10 @@ def main_worker(gpu, ngpus_per_node, args):
         validate(val_loader, model, criterion, args)
         return
 
+    from eachlayer import collect
+    layers = [module for module in model.named_modules()]
+    if args.collect != -1 :
+        collect(layers,args.collect)
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
